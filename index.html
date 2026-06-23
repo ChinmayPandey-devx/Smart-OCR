@@ -74,7 +74,7 @@
     }
   }
 
-  /* Screens */
+  /* Screens: Hyper-accelerated, high-velocity opening animation */
   .screen {
     display: none;
     flex-direction: column;
@@ -82,15 +82,16 @@
     min-height: 100vh;
     background: var(--bg-page-mobile);
     padding-bottom: 80px; 
-    animation: fadeIn 0.3s ease-in-out;
+    transform-origin: top center;
+    animation: slideUpSnappy 0.15s cubic-bezier(0.1, 0.9, 0.2, 1) forwards;
   }
   .screen.active {
     display: flex;
   }
 
-  @keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
+  @keyframes slideUpSnappy {
+    from { opacity: 0; transform: translateY(15px) scale(0.98); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
   }
 
   /* Interactive elements */
@@ -222,11 +223,14 @@
     margin: 0 auto 12px auto;
   }
   .progress-track { width: 100%; height: 6px; background: #E2E8F0; border-radius: 3px; overflow: hidden; }
-  .progress-fill { height: 100%; background: var(--primary-blue); width: 0%; transition: width 2.5s linear; }
+  .progress-fill { height: 100%; background: var(--primary-blue); width: 0%; transition: width 1.2s cubic-bezier(0.1, 0.9, 0.2, 1); }
   .progress-text { font-size: 13px; color: var(--grey-muted); text-align: center; margin-top: 12px; }
 
+  .test-links-row {
+    display: flex; gap: 16px; margin-top: 32px;
+  }
   .test-error-link {
-    font-size: 12px; color: var(--grey-muted); text-decoration: underline; margin-top: 40px;
+    font-size: 12px; color: var(--grey-muted); text-decoration: underline; 
   }
 
   /* Screen 2 */
@@ -538,6 +542,27 @@
 
   .call-section { font-size: 14px; color: var(--grey-muted); }
   .phone-chip { display: inline-flex; align-items: center; gap: 8px; padding: 12px 24px; background: var(--primary-blue-light); color: var(--primary-blue); border-radius: 24px; font-weight: 500; margin-top: 16px; }
+
+  /* Telemetry / Developer Dashboard */
+  #screen-telemetry { background: var(--bg-page-mobile); }
+  .telemetry-tabs {
+    display: flex; background: var(--white); padding: 12px 16px; border-bottom: 1px solid var(--grey-border); gap: 8px;
+  }
+  .tele-tab {
+    flex: 1; padding: 8px 12px; background: var(--bg-page-mobile); border: 1px solid var(--grey-border); border-radius: 8px; font-size: 13px; font-weight: 500; color: var(--navy); text-align: center;
+  }
+  .tele-tab.active {
+    background: var(--primary-blue-light); color: var(--primary-blue); border-color: var(--primary-blue);
+  }
+  .telemetry-content {
+    padding: 16px; width: 100%;
+  }
+  .json-block {
+    display: none; background: #0F172A; color: #38BDF8; font-family: monospace; font-size: 13px; padding: 16px; border-radius: 12px; overflow-x: auto; margin: 0; box-shadow: inset 0 2px 8px rgba(0,0,0,0.2);
+  }
+  .json-block.active {
+    display: block;
+  }
 </style>
 </head>
 <body>
@@ -585,16 +610,86 @@
         <div class="progress-text">Reading your prescription — your cart will be ready in a moment.</div>
       </div>
 
-      <a class="test-error-link" onclick="goToScreen('error')">Test error state</a>
+      <div class="test-links-row">
+        <a class="test-error-link" onclick="goToScreen('error')">Test error state</a>
+        <a class="test-error-link" style="color: var(--teal);" onclick="goToScreen('telemetry')">View Telemetry</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Screen Telemetry Dashboard -->
+  <div id="screen-telemetry" class="screen">
+    <div class="header">
+      <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" style="cursor:pointer;" onclick="goToScreen('back')"><path d="M15 19l-7-7 7-7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <div class="header-title">OCR Telemetry</div>
+      <div style="width:24px"></div>
+    </div>
+    
+    <div style="padding-top: 52px; display: flex; flex-direction: column; width: 100%;">
+      <!-- Prominent dashboard preview graphic -->
+      <img src="assets/dashboard.png" alt="Dashboard Preview" style="width: 100%; height: auto; display: block; border-bottom: 1px solid var(--grey-border);" />
+      
+      <!-- Telemetry sub-view toggles -->
+      <div class="telemetry-tabs">
+        <button class="tele-tab active" id="tab-raw" onclick="showTelemetry('raw')">Raw Payload</button>
+        <button class="tele-tab" id="tab-boxes" onclick="showTelemetry('boxes')">Bounding Boxes</button>
+        <button class="tele-tab" id="tab-scores" onclick="showTelemetry('scores')">Confidence</button>
+      </div>
+
+      <!-- JSON Data Payload Views -->
+      <div class="telemetry-content">
+        <pre id="json-raw" class="json-block active">{
+  "transaction_id": "ocr_tx_9847192834",
+  "status": "COMPLETED",
+  "processing_time_ms": 112,
+  "detected_text": [
+    "Dr. Mehta",
+    "Neurologist",
+    "Metformin 500mg",
+    "Atorvastatin 10mg",
+    "Ramipril 5mg"
+  ],
+  "model_version": "v3.2.1-prod"
+}</pre>
+        <pre id="json-boxes" class="json-block">{
+  "regions": [
+    {
+      "text": "Metformin 500mg",
+      "box": [120, 45, 340, 80],
+      "polygon": [
+        [120, 45], [340, 45], 
+        [340, 80], [120, 80]
+      ]
+    },
+    {
+      "text": "Atorvastatin 10mg",
+      "box": [120, 95, 360, 130]
+    }
+  ]
+}</pre>
+        <pre id="json-scores" class="json-block">{
+  "confidence_scores": {
+    "Metformin 500mg": 0.998,
+    "Atorvastatin 10mg": 0.994,
+    "Ramipril 5mg": 0.981,
+    "Dr. Mehta": 0.999
+  },
+  "overall_document_quality": "HIGH",
+  "blur_index": 0.02
+}</pre>
+      </div>
     </div>
   </div>
 
   <!-- Screen 2: Cart -->
   <div id="screen-2" class="screen">
     <div class="header">
-      <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" style="cursor:pointer;" onclick="goToScreen(1)"><path d="M15 19l-7-7 7-7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" style="cursor:pointer;" onclick="goToScreen('back')"><path d="M15 19l-7-7 7-7" stroke-linecap="round" stroke-linejoin="round"/></svg>
       <div class="header-title">Your Prescription Cart</div>
-      <div class="badge-green">3 items matched</div>
+      <div style="display:flex; gap:12px; align-items:center;">
+        <div class="badge-green">3 matched</div>
+        <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" style="cursor:pointer;" onclick="goToScreen('telemetry')"><path stroke-linecap="round" stroke-linejoin="round" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/></svg>
+      </div>
     </div>
 
     <div class="info-banner">
@@ -776,7 +871,7 @@
 
     <div class="action-buttons-stack">
       <button class="btn-outline">Track your order →</button>
-      <button class="btn-ghost" onclick="goToScreen(1)">Back to Home</button>
+      <button class="btn-ghost" onclick="goHome()">Back to Home</button>
     </div>
     
     <div class="footnote">Prescription stored in your ABHA health record</div>
@@ -806,14 +901,17 @@
         1800-123-4567
       </div>
       <br>
-      <a style="display:inline-block;margin-top:24px;font-size:13px;color:var(--primary-blue);text-decoration:underline;cursor:pointer;" onclick="goToScreen(1)">Restart Demo</a>
+      <a style="display:inline-block;margin-top:24px;font-size:13px;color:var(--primary-blue);text-decoration:underline;cursor:pointer;" onclick="goHome()">Restart Demo</a>
     </div>
   </div>
 
 </div>
 
 <script>
-  // State
+  // State and Navigation History
+  const navStack = [];
+  let currentScreen = '1';
+
   const state = {
     cart: [
       { id: 1, mrp: 72, price: 48, qty: 1 },
@@ -825,32 +923,28 @@
     animationTimers: []
   };
 
-  // Initialization: start animation on screen 1
-  function startParsing() {
-    // Clear any previous timers
-    state.animationTimers.forEach(t => clearTimeout(t));
-    state.animationTimers = [];
-
-    state.animationTimers.push(setTimeout(() => { 
-      document.getElementById('progress-bar').style.width = '100%'; 
-    }, 50));
-
-    const delays = [400, 800, 1200, 1600, 2000];
-    delays.forEach((delay, index) => {
-      state.animationTimers.push(setTimeout(() => {
-        document.getElementById(`ext-${index+1}`).classList.add('show');
-      }, delay));
-    });
-
-    state.animationTimers.push(setTimeout(() => {
-      goToScreen(2);
-    }, 2500));
+  // Stack-based Navigation logic
+  function goToScreen(screenNum) {
+    if (screenNum === 'back') {
+      if (navStack.length > 0) {
+        const prev = navStack.pop();
+        performNav(prev, true);
+      }
+      return;
+    }
+    navStack.push(currentScreen);
+    performNav(screenNum, false);
   }
 
-  // Initial trigger
-  window.onload = startParsing;
+  function goHome() {
+    navStack.length = 0; // clear history
+    performNav('1', false);
+  }
 
-  function goToScreen(screenNum) {
+  function performNav(screenNum, isBack) {
+    currentScreen = screenNum;
+    
+    // Reset views
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
     document.getElementById('screen-3').classList.remove('show');
     document.body.classList.remove('scroll-locked');
@@ -858,24 +952,61 @@
     if (screenNum === 'error') {
       document.getElementById('screen-error').classList.add('active');
       state.animationTimers.forEach(t => clearTimeout(t));
+    } else if (screenNum === 'telemetry') {
+      document.getElementById('screen-telemetry').classList.add('active');
+      state.animationTimers.forEach(t => clearTimeout(t));
     } else {
       document.getElementById(`screen-${screenNum}`).classList.add('active');
-      if (screenNum === 1) {
-        // Reset state and animation
+      
+      if (screenNum == 1 && !isBack) {
         document.getElementById('progress-bar').style.width = '0%';
         document.querySelectorAll('.extract-line').forEach(el => el.classList.remove('show'));
         startParsing();
       }
-      if (screenNum === 4) {
-        // trigger svg animation again
+      if (screenNum == 4) {
+        // re-trigger check animation
         const check = document.querySelector('.check-svg');
         check.style.animation = 'none';
-        check.offsetHeight; /* trigger reflow */
+        check.offsetHeight; 
         check.style.animation = null; 
       }
     }
   }
 
+  // Hyper-accelerated AI Parsing Animation
+  function startParsing() {
+    state.animationTimers.forEach(t => clearTimeout(t));
+    state.animationTimers = [];
+
+    state.animationTimers.push(setTimeout(() => { 
+      document.getElementById('progress-bar').style.width = '100%'; 
+    }, 50));
+
+    const delays = [150, 350, 550, 750, 950];
+    delays.forEach((delay, index) => {
+      state.animationTimers.push(setTimeout(() => {
+        document.getElementById(`ext-${index+1}`).classList.add('show');
+      }, delay));
+    });
+
+    state.animationTimers.push(setTimeout(() => {
+      goToScreen('2');
+    }, 1300));
+  }
+
+  // Initial trigger
+  window.onload = startParsing;
+
+  // Telemetry Tab Logic
+  function showTelemetry(tab) {
+    document.querySelectorAll('.tele-tab').forEach(el => el.classList.remove('active'));
+    document.querySelectorAll('.json-block').forEach(el => el.classList.remove('active'));
+    
+    document.getElementById(`tab-${tab}`).classList.add('active');
+    document.getElementById(`json-${tab}`).classList.add('active');
+  }
+
+  // Application Logic
   function updateQty(id, change) {
     const item = state.cart.find(i => i.id === id);
     if (!item) return;
@@ -966,7 +1097,7 @@
       document.getElementById('conf-refill-info').style.display = 'none';
     }
 
-    goToScreen(4);
+    goToScreen('4');
   }
 
 </script>
